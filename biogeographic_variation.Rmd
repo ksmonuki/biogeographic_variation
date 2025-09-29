@@ -1,0 +1,1713 @@
+---
+title: "Manuscript submission code"
+author: "Anonymous"
+date: '2025-27-09'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Code for the manuscript submission "Biogeographic variation in reproductive strategy in a range-expanding marine gastropod" to the Proceedings of the Royal Society B: Biological Sciences. 
+
+## Field Capsule Data Analysis 
+
+### Load Packages 
+
+Load packages required for downstream analyses. 
+
+```{r}
+library(tidyverse)
+library(multcomp)
+library(nlme)
+library(lme4)
+library(AICcmodavg)
+library(emmeans)
+library(car)
+```
+
+## Field-collected capsule analysis
+
+Analyses for egg capsules collected in the field from two range-center sites (Cabrillo Beach and Rincon Point) and three range-edge sites (Muir Beach, Dillon Beach, Cape Mendocino). We ran generalized linear mixed models and linear mixed models for egg capsule and hatchling traits. 
+
+
+### Hatchling Size 
+
+Import data 
+
+```{r}
+hatchling_size <- read.csv("/Users/keiramonuki/Documents/Sanford\ Lab/snail_tank_experiment/field_data/hatchling_size.csv")
+
+head(hatchling_size)
+
+```
+
+Check the data distribution, including the mean and standard deviation. 
+
+```{r}
+hist(hatchling_size$Hatchling_size)
+```
+
+```{r}
+mean(hatchling_size$Hatchling_size) 
+
+sd(hatchling_size$Hatchling_size) 
+```
+
+Run a GLMM with a gamma distribution and log link function and check AIC model fit. 
+
+```{r}
+
+hatch_size_gm <- 
+  glm(Hatchling_size ~ Population + (1 | Aggregation_ID/Capsule_ID), family = Gamma(link = log),data = hatchling_size)
+
+summary(hatch_size_gm)
+anova(hatch_size_gm) 
+Anova(hatch_size_gm)
+
+AICc(hatch_size_gm) 
+AIC(hatch_size_gm) 
+
+```
+
+Run pairwise comparisons in emmeans using Tukey adjustments. 
+
+```{r}
+
+em <- emmeans(hatch_size_gm, "Population", data = hatchling_size)
+contrast(em, "pairwise", adjust = "Tukey")
+
+```
+
+Plot model residuals
+
+```{r}
+plot(hatch_size_gm)
+plot(resid(hatch_size_gm))
+hist(resid(hatch_size_gm))
+
+```
+
+Q-Q plot of residuals 
+
+```{r}
+qqnorm(resid(hatch_size_gm))
+qqline(resid(hatch_size_gm), col = "steelblue", lwd = 2)
+```
+
+Back-transform the model estimates to plot on top of raw data scatter. 
+
+```{r}
+
+emmeans(hatch_size_gm, "Population", type  = "response", data = hatchling_size)
+
+estimates <- emmeans(hatch_size_gm, "Population", type  = "response", data = hatchling_size)
+
+plot(estimates)
+
+estimates
+
+
+```
+
+Create a dataframe of the back-transformed estimates. 
+
+```{r}
+
+site <- c("CB", "CM", "DB", "MB", "RP")
+
+est <- c(0.611, 0.656, 0.664, 0.621, 0.621)
+
+
+err_high <- c(0.623, 0.666, 0.675, 0.633, 0.631)
+
+
+err_low <- c(0.600, 0.646, 0.653, 0.609, 0.611)
+
+
+hatch_size <- data.frame(Population = site, Estimate = est, Error_high = err_high, Error_low = err_low)
+
+hatch_size
+
+```
+
+Plot hatchling size across populations. 
+
+```{r}
+ggplot(hatchling_size, aes(x = Population, y = Hatchling_size, color = Population)) +
+  geom_jitter(aes(x = Population, y = Hatchling_size), position=position_jitter(w=0.2), size = 2) +
+  scale_color_manual(values = c("lightgoldenrod1", "darkgoldenrod2", "cornflowerblue","darkblue", "purple4")) +
+  geom_point(data = hatch_size, aes(x = Population, y = Estimate), size = 4,  color = "red") +
+  geom_errorbar(data = hatch_size, aes(x = Population, y = Estimate, ymin = Error_low, ymax = Error_high), color = "red", width = 0.5) +
+  theme_bw() +
+  theme(legend.position = "none",
+        axis.title = element_text(size=25), 
+        axis.text = element_text(size=25),
+        axis.ticks.y = element_line(linewidth = 2),
+        axis.ticks.length.y = unit(0.25, "cm")) + 
+  scale_y_continuous(name = "Hatchling Size (mm)", expand = c(0,0), limits = c(0,1.2)) + 
+  xlab("Population") -> hatch_size_plot
+
+neworder = c("CB","RP", "MB", "DB", "CM")
+
+hatch_size_plot$data$Population <- factor(hatch_size_plot$data$Population, levels=neworder)
+
+hatch_size_plot
+
+```
+
+### Hatchling Number 
+
+Import data 
+
+```{r}
+hatchling_number <- read.csv("/Users/keiramonuki/Documents/Sanford\ Lab/snail_tank_experiment/field_data/hatchling_number.csv")
+
+head(hatchling_number)
+```
+
+Check distribution of data, including mean and standard deviation. 
+
+```{r}
+hist(hatchling_number$Hatchling_number)
+```
+
+
+```{r}
+mean(hatchling_number$Hatchling_number) 
+
+sd(hatchling_number$Hatchling_number) 
+```
+
+Run a GLMM with a negative binomial distribution and log link function and calculate AIC. 
+
+```{r}
+hatch_num_nb <- 
+  glm.nb(Hatchling_number ~ Population + (1 | Aggregation_ID), data = hatchling_number)
+
+summary(hatch_num_nb)
+anova(hatch_num_nb) 
+Anova(hatch_num_nb)
+
+AICc(hatch_num_nb)
+AIC(hatch_num_nb) 
+
+```
+
+Plot the model residuals 
+
+```{r}
+plot(hatch_num_nb)
+plot(resid(hatch_num_nb))
+hist(resid(hatch_num_nb))
+
+```
+
+Q-Q plot of model residuals 
+
+```{r}
+qqnorm(resid(hatch_num_nb))
+qqline(resid(hatch_num_nb), col = "steelblue", lwd = 2)
+```
+
+Back transform model estimates to plot on top of the raw data scatter 
+
+```{r}
+
+emmeans(hatch_num_nb, "Population", type  = "response", data = hatchling_number)
+
+estimates <- emmeans(hatch_num_nb, "Population", type  = "response", data = hatchling_number)
+
+plot(estimates)
+
+estimates
+
+```
+
+Create dataframe of back transformed model estimates
+
+```{r}
+site <- c("CB", "CM", "DB", "MB", "RP")
+
+est <- c(33.9, 39.8, 34.3, 31.6, 32.5)
+
+
+err_high <- c(39.6,45.7, 39.7, 37.7, 37.5)
+
+
+err_low <- c(29.0, 34.7, 29.5, 26.6, 28.2)
+
+
+hatch_num <- data.frame(Population = site, Estimate = est, Error_high = err_high, Error_low = err_low)
+
+hatch_num
+
+```
+
+Plot hatchling number across populations
+
+```{r}
+
+ggplot(hatchling_number, aes(x = Population, y = Hatchling_number, color = Population)) +
+  geom_jitter(aes(x = Population, y = Hatchling_number), position=position_jitter(w=0.2), size = 2) +
+  scale_color_manual(values = c("lightgoldenrod1", "darkgoldenrod2", "cornflowerblue","darkblue", "purple4")) +
+  geom_point(data = hatch_num, aes(x = Population, y = Estimate), size = 4,  color = "red") +
+  geom_errorbar(data = hatch_num, aes(x = Population, y = Estimate, ymin = Error_low, ymax = Error_high), color = "red", width = 0.5) +
+  theme_bw() +
+  theme(legend.position = "none",
+        axis.title = element_text(size=25), 
+        axis.text = element_text(size=25),
+        axis.ticks.y = element_line(linewidth = 2),
+        axis.ticks.length.y = unit(0.25, "cm")) + 
+  scale_y_continuous(name = "Number of Hatchlings", expand = c(0,0), limits = c(0,90)) + 
+  xlab("Population") -> hatch_num_plot
+
+
+hatch_num_plot$data$Population <- factor(hatch_num_plot$data$Population, levels=neworder)
+
+hatch_num_plot
+
+```
+
+### Embryo Number 
+
+Import data 
+
+```{r}
+embryo_number <- read.csv("/Users/keiramonuki/Documents/Sanford\ Lab/snail_tank_experiment/field_data/embryo_number.csv")
+
+head(embryo_number)
+```
+
+Check distribution of raw data, including mean and standard deviation
+
+```{r}
+hist(embryo_number$Number_embryos)
+```
+
+```{r}
+mean(embryo_number$Number_embryos) 
+
+sd(embryo_number$Number_embryos) 
+```
+
+Run a GLMM with a negative binomial distribution and a log link function
+
+```{r}
+embryo_num_nb <- 
+  glm.nb(Number_embryos ~ Population + (1 | Aggregation_ID), data = embryo_number)
+
+summary(embryo_num_nb)
+anova(embryo_num_nb)
+Anova(embryo_num_nb)
+
+AICc(embryo_num_nb)
+AIC(embryo_num_nb) 
+
+```
+
+Run pairwise comparisons in emmeans with Tukey adjustments
+
+```{r}
+em <- emmeans(embryo_num_nb, "Population", data = embryo_number)
+contrast(em, "pairwise", adjust = "Tukey")
+
+```
+
+Plot mode residuals to assess model fit
+
+```{r}
+plot(embryo_num_nb)
+plot(resid(embryo_num_nb))
+hist(resid(embryo_num_nb))
+
+```
+
+Q-Q plot of model residuals 
+
+```{r}
+qqnorm(resid(embryo_num_nb))
+qqline(resid(embryo_num_nb), col = "steelblue", lwd = 2)
+```
+
+Back-transform model estimates to plot on top of the raw data scatter
+
+```{r}
+
+emmeans(embryo_num_nb, "Population", type  = "response", data = embryo_number)
+
+estimates <- emmeans(embryo_num_nb, "Population", type  = "response", data = embryo_number)
+
+plot(estimates)
+
+estimates
+
+```
+
+Create data frame of back-transformed estimates
+
+```{r}
+site <- c("CB", "CM", "DB", "MB", "RP")
+
+est <- c(34.0, 51.0, 55.0, 49.9, 36.2)
+
+
+err_high <- c(38.6, 55.7, 59.6, 54.5, 42.1)
+
+
+err_low <- c(29.9, 46.6, 50.7, 45.6, 31.1)
+
+
+emb_num <- data.frame(Population = site, Estimate = est, Error_high = err_high, Error_low = err_low)
+
+emb_num
+
+```
+
+Plot number of embryos across populations
+
+```{r}
+ggplot(embryo_number, aes(x = Population, y = Number_embryos, color = Population)) +
+  geom_jitter(aes(x = Population, y = Number_embryos), position=position_jitter(w=0.2), size = 2) +
+  scale_color_manual(values = c("lightgoldenrod1", "darkgoldenrod2", "cornflowerblue","darkblue", "purple4")) +
+  geom_point(data = emb_num, aes(x = Population, y = Estimate), size = 4,  color = "red") +
+  geom_errorbar(data = emb_num, aes(x = Population, y = Estimate, ymin = Error_low, ymax = Error_high), color = "red", width = 0.5) +
+  theme_bw() +
+  theme(legend.position = "none",
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size=25), 
+        axis.text = element_text(size=25),
+        axis.ticks.y = element_line(linewidth = 2),
+        axis.ticks.length.y = unit(0.25, "cm")) + 
+  scale_y_continuous(name = "Number of Embryos", expand = c(0,0), limits = c(0,105)) -> emb_num_plot
+
+emb_num_plot$data$Population <- factor(emb_num_plot$data$Population, levels=neworder)
+
+emb_num_plot
+
+
+```
+
+
+### Embryo size 
+
+Import data
+
+```{r}
+embryo_size <- read.csv("/Users/keiramonuki/Documents/Sanford\ Lab/snail_tank_experiment/field_data/embryo_size.csv")
+
+head(embryo_size)
+
+```
+
+Check the distribution of the raw data, including mean and standard deviation
+
+```{r}
+hist(embryo_size$Embryo_size)
+```
+
+```{r}
+mean(embryo_size$Embryo_size) 
+
+sd(embryo_size$Embryo_size) 
+```
+
+Due to the Normal raw data distribution, we will run a linear mixed effects model and calculate AIC values. 
+
+```{r}
+emb_size_lm1 <- lmer(Embryo_size ~ Population + (1 | Aggregation_ID/Capsule_ID), data = embryo_size)
+
+summary(emb_size_lm1)
+
+anova(emb_size_lm1)
+Anova(emb_size_lm1) 
+
+AIC(emb_size_lm1) 
+AICc(emb_size_lm1)
+```
+
+Assess pairwise comparisons using emmeans and Tukey adjustments
+
+```{r}
+em <- emmeans(emb_size_lm1, "Population", data = embryo_size)
+contrast(em, "pairwise", adjust = "Tukey")
+```
+
+Plot model residuals to assess model fit 
+
+```{r}
+plot(emb_size_lm1)
+plot(resid(emb_size_lm1))
+hist(resid(emb_size_lm1))
+```
+
+Q-Q plot of model residuals 
+
+```{r}
+qqnorm(resid(emb_size_lm1))
+qqline(resid(emb_size_lm1), col = "steelblue", lwd = 2)
+```
+
+Isolate model estimates to plot on top of the raw data scatter
+
+```{r}
+
+emmeans(emb_size_lm1, "Population", type  = "response", data = embryo_size)
+
+estimates <- emmeans(emb_size_lm1, "Population", type  = "response", data = embryo_size)
+
+plot(estimates)
+
+estimates
+
+```
+
+Create data frame of the model estimates
+
+``` {r}
+site <- c("CB", "CM", "DB", "MB", "RP")
+
+est <- c(0.324, 0.311, 0.304, 0.302, 0.294)
+
+
+err_high <- c(0.335, 0.320, 0.313, 0.311, 0.308)
+
+
+err_low <- c(0.312, 0.302, 0.296, 0.293, 0.281)
+
+
+emb_size <- data.frame(Population = site, Estimate = est, Error_high = err_high, Error_low = err_low)
+
+emb_size
+
+```
+
+Plot embryo size across populations
+
+```{r}
+ggplot(embryo_size, aes(x = Population, y = Embryo_size, color = Population)) +
+  geom_jitter(aes(x = Population, y = Embryo_size), position=position_jitter(w=0.2), size = 2) +
+  scale_color_manual(values = c("lightgoldenrod1", "darkgoldenrod2", "cornflowerblue","darkblue", "purple4")) +
+  geom_point(data = emb_size, aes(x = Population, y = Estimate), size = 4,  color = "red") +
+  geom_errorbar(data = emb_size, aes(x = Population, y = Estimate, ymin = Error_low, ymax = Error_high), color = "red", width = 0.5) +
+  theme_bw() +
+  theme(legend.position = "none",
+        axis.title.x=element_blank(),
+        axis.title.y = element_text(size=25), 
+        axis.text = element_text(size=25),
+        axis.ticks.y = element_line(linewidth = 2),
+        axis.ticks.length.y = unit(0.25, "cm")) + 
+  scale_y_continuous(name = "Embryo Size (mm)", expand = c(0,0), limits = c(0,0.6)) -> emb_size_plot
+
+emb_size_plot$data$Population <- factor(emb_size_plot$data$Population, levels=neworder)
+
+emb_size_plot
+
+```
+
+### Capsule Length
+
+Capsule length is in the same dataset as number of embryos. Check the distribution of the raw data
+
+```{r}
+hist(embryo_number$Capsule_Length)
+```
+
+Run a GLMM model with a Gamma distribution and log link function. Calculate AIC values.
+
+```{r}
+capsule_gm <- 
+  glm(Capsule_Length ~ Population + (1 | Aggregation_ID), family = Gamma(link = log), data = embryo_number)
+
+summary(capsule_gm)
+anova(capsule_gm)
+Anova(capsule_gm)
+
+AICc(capsule_gm) 
+AIC(capsule_gm) 
+
+```
+
+Calculate pairwise comparisons using emmeans and Tukey adjustments
+
+```{r}
+em <- emmeans(capsule_gm, "Population", data = embryo_number)
+contrast(em, "pairwise", adjust = "Tukey")
+
+```
+
+Plot model residuals to assess model fit 
+
+```{r}
+plot(capsule_gm)
+plot(resid(capsule_gm))
+hist(resid(capsule_gm))
+```
+
+Q-Q plot of model residuals
+
+```{r}
+qqnorm(resid(capsule_gm))
+qqline(resid(capsule_gm), col = "steelblue", lwd = 2)
+```
+
+Back-transform the model estimates to plot on top of the raw data scatter
+
+```{r}
+
+emmeans(capsule_gm, "Population", type  = "response", data = embryo_number)
+
+estimates <- emmeans(capsule_gm, "Population", type  = "response", data = embryo_number)
+
+plot(estimates)
+
+estimates
+
+```
+
+Create data frame of the back-transformed estimates
+
+```{r}
+
+site <- c("CB", "CM", "DB", "MB", "RP")
+
+est <- c(4.03, 5.39, 5.12, 4.49, 4.56)
+
+
+err_high <- c(4.24, 5.60, 5.31, 4.67, 4.84)
+
+
+err_low <- c(3.83, 5.19, 4.95, 4.32, 4.30)
+
+
+cap_len <- data.frame(Population = site, Estimate = est, Error_high = err_high, Error_low = err_low)
+
+cap_len
+
+```
+
+Plot capsule length across populations
+
+```{r}
+ggplot(embryo_number, aes(x = Population, y = Capsule_Length, color = Population)) +
+  geom_jitter(aes(x = Population, y = Capsule_Length), position=position_jitter(w=0.2), size = 2) +
+  scale_color_manual(values = c("lightgoldenrod1", "darkgoldenrod2", "cornflowerblue","darkblue", "purple4")) +
+  geom_point(data = cap_len, aes(x = Population, y = Estimate), size = 4,  color = "red") +
+  geom_errorbar(data = cap_len, aes(x = Population, y = Estimate, ymin = Error_low, ymax = Error_high), color = "red", width = 0.5) +
+  theme_bw() +
+  theme(legend.position = "none",
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size=25), 
+        axis.text = element_text(size=25),
+        axis.ticks.y = element_line(linewidth = 2),
+        axis.ticks.length.y = unit(0.25, "cm")) + 
+  scale_y_continuous(name = "Capsule Length (mm)", expand = c(0,0), limits = c(0,9)) -> cap_len_plot
+
+cap_len_plot$data$Population <- factor(cap_len_plot$data$Population, levels=neworder)
+
+cap_len_plot
+
+```
+
+### Nurse Eggs
+
+Import data 
+
+```{r}
+nurse_eggs <- read.csv("/Users/keiramonuki/Documents/Sanford\ Lab/snail_tank_experiment/field_data/nurse_eggs.csv")
+
+head(nurse_eggs)
+
+```
+
+Run linear model of nurse egg ratios and calculate AIC
+
+```{r}
+
+nurse_eggs$Population <- as.factor(nurse_eggs$Population)
+
+nurse_lm <- lm(Nurse_egg ~ Population, data = nurse_eggs)
+
+summary(nurse_lm)
+anova(nurse_lm) 
+Anova(nurse_lm)
+
+AICc(nurse_lm) 
+AIC(nurse_lm) 
+
+```
+
+Calculate pairwise comparisons using emmeans and Tukey adjustments
+
+```{r}
+em <- emmeans(nurse_lm, "Population", data = nurse_eggs)
+contrast(em, "pairwise", adjust = "Tukey")
+
+```
+
+Plot model residuals to assess model fit 
+
+```{r}
+plot(nurse_lm)
+plot(resid(nurse_lm))
+hist(resid(nurse_lm))
+```
+
+Q-Q plot of model residuals
+
+```{r}
+qqnorm(resid(nurse_lm))
+qqline(resid(nurse_lm), col = "steelblue", lwd = 2)
+```
+
+Isolate model estimates to plot on top of the raw data scatter
+
+```{r}
+
+emmeans(nurse_lm, "Population", type  = "response", data = nurse_eggs)
+
+estimates <- emmeans(nurse_lm, "Population", type  = "response", data = nurse_eggs)
+
+plot(estimates)
+
+estimates
+
+```
+
+Create a dataframe of the model estimates
+
+```{r}
+site <- c("CB", "CM", "DB", "MB", "RP")
+
+est <- c(1.44, 16.83, 23.92, 22.20, 7.41)
+
+
+err_high <- c(8.6, 28.1, 30.0, 29.4, 16.6)
+
+
+err_low <- c(-5.72, 5.52, 17.87, 15.04, -1.83)
+
+
+nurse <- data.frame(Population = site, Estimate = est, Error_high = err_high, Error_low = err_low)
+
+nurse
+
+```
+
+Plot nurse egg ratios across populations
+
+```{r}
+
+ggplot(nurse_eggs, aes(x = Population, y = Nurse_egg, color = Population)) +
+  geom_jitter(aes(x = Population, y = Nurse_egg), position=position_jitter(w=0.2), size = 2) +
+  scale_color_manual(values = c("lightgoldenrod1", "darkgoldenrod2", "cornflowerblue","darkblue", "purple4")) +
+  geom_point(data = nurse, aes(x = Population, y = Estimate), size = 4,  color = "red") +
+  geom_errorbar(data = nurse, aes(x = Population, y = Estimate, ymin = Error_low, ymax = Error_high), color = "red", width = 0.5) +
+  theme_bw() +
+  theme(legend.position = "none",
+        axis.title = element_text(size=25), 
+        axis.text = element_text(size=25),
+        axis.ticks.y = element_line(linewidth = 2),
+        axis.ticks.length.y = unit(0.25, "cm")) + 
+  scale_y_continuous(name = "Nurse Egg Ratio", expand = c(0,0), limits = c(-20,50)) + 
+  xlab("Population") -> nurse_egg_plot
+
+
+nurse_egg_plot$data$Population <- factor(nurse_egg_plot$data$Population, levels=neworder)
+
+nurse_egg_plot
+
+```
+
+## Analyses for Lab-Reared Egg Capsules 
+
+### Embryo Number 
+
+Import data 
+
+```{r}
+embryo_number <- read.csv("/Users/keiramonuki/Documents/Sanford\ Lab/snail_tank_experiment/cap_len_emb_num_new.csv")
+
+head(embryo_number)
+
+```
+
+Remove data from cold treatment and from RP population (not enough data for either), and the large DB snail (DB_H23)
+
+```{r}
+embryo_number %>% 
+  filter(Treatment == "H") %>% 
+  filter(Population != "RP") %>% 
+  filter(Breeding_Pair != "23") -> embryo_number
+
+head(embryo_number)
+
+```
+
+Check distribution of raw data, including mean and standard deviation
+
+```{r}
+hist(embryo_number$Number_embryos)
+mean(embryo_number$Number_embryos)
+sd(embryo_number$Number_embryos)
+
+```
+
+Run a GLMM with a negative binomial distribution, size and population fixed effects, breeding pair as a random effect, and a log link function. Calculate AIC values
+
+```{r}
+emb_num_nb <- 
+  glm.nb(Number_embryos ~ Avg_Size + Population + (1 | Breeding_Pair), data = embryo_number)
+
+summary(emb_num_nb)
+
+anova(emb_num_nb) 
+Anova(emb_num_nb) 
+
+AIC(emb_num_nb)
+AICc(emb_num_nb)
+```
+
+Back-transform model estimates to plot on top of the raw data scatter
+
+```{r}
+
+emmeans(emb_num_nb, "Population", type  = "response", data = embryo_number)
+
+estimates <- emmeans(emb_num_nb, "Population", type  = "response", data = embryo_number)
+
+plot(estimates)
+
+estimates
+
+```
+
+Create data frame of the back-transformed model estimates
+
+```{r}
+site <- c("DB", "MB", "YB")
+
+est <- c(45.9, 47.8, 43.6)
+err_high <- c(49, 51, 47)
+err_low <- c(43.0, 44.7, 40.5)
+
+emb_num <- data.frame(Population = site, Estimate = est, Error_high = err_high, Error_low = err_low)
+emb_num
+
+```
+
+Plot the number of embryos across populations
+
+```{r}
+
+ggplot(embryo_number, aes(x = Population, y = Number_embryos, color = Population)) +
+  geom_jitter(aes(x = Population, y = Number_embryos), position=position_jitter(w=0.2), size = 2) +
+  scale_color_manual(values = c("gold2", "cornflowerblue","darkblue")) +
+  geom_point(data = emb_num, aes(x = Population, y = Estimate), size = 4,  color = "red") +
+  geom_errorbar(data = emb_num, aes(x = Population, y = Estimate, ymin = Error_low, ymax = Error_high), color = "red", width = 0.5) +
+  theme_bw() +
+   theme(legend.position = "none",
+         axis.title.x = element_blank(),
+         axis.title.y = element_text(size=25), 
+        axis.text = element_text(size=25),
+        axis.ticks.y = element_line(linewidth = 2),
+        axis.ticks.length.y = unit(0.25, "cm")) + 
+  scale_y_continuous(name = "Number of Embryos", expand = c(0,0), limits = c(0,110))  -> emb_num_plot
+
+
+neworder = c("YB", "MB", "DB")
+
+emb_num_plot$data$Population <- factor(emb_num_plot$data$Population, levels=neworder)
+
+emb_num_plot
+
+
+```
+
+Calculate pairwise comparisons using emmeans and Tukey adjustments
+
+```{r}
+
+em <- emmeans(emb_num_nb, "Population", data = embryo_number)
+contrast(em, "pairwise", adjust = "Tukey")
+
+#  DB - MB   -0.0398 0.0456 Inf  -0.872  0.6583
+# DB - YB    0.0507 0.0544 Inf   0.932  0.6200
+# MB - YB    0.0905 0.0547 Inf   1.655  0.2227
+
+```
+
+Plot model residuals to assess model fit 
+
+```{r}
+plot(emb_num_nb)
+plot(resid(emb_num_nb))
+hist(resid(emb_num_nb))
+```
+
+Q-Q plot of model residuals
+
+```{r}
+qqnorm(resid(emb_num_nb))
+qqline(resid(emb_num_nb), col = "steelblue", lwd = 2)
+```
+
+### Capsule Length
+
+Capsule ength is in the embryo number dataset. Assess the distribution of the raw data, including mean and standard deviation.
+
+```{r}
+hist(embryo_number$Capsule_Length)
+mean(embryo_number$Capsule_Length)
+sd(embryo_number$Capsule_Length)
+```
+
+Run a GLMM with a gamma distribution and log link function and calculate AIC values.
+
+```{r}
+cap_len_gm <- 
+  glm(Capsule_Length ~ Avg_Size + Population + (1 | Breeding_Pair), family = Gamma(link = "log"), data = embryo_number)
+
+summary(cap_len_gm)
+anova(cap_len_gm) 
+Anova(cap_len_gm)
+
+AICc(cap_len_gm)
+AIC(cap_len_gm)
+```
+
+Back-transform the model estimates to plot on top of the raw data scatter
+
+```{r}
+emmeans(cap_len_gm, "Population", type  = "response", data = embryo_number)
+
+estimates <- emmeans(cap_len_gm, "Population", type  = "response", data = embryo_number)
+
+plot(estimates)
+
+estimates
+```
+
+Create data frame of the back-transformed model estimates
+
+```{r}
+
+site <- c("DB", "MB", "YB")
+
+est <- c(4.54, 4.62, 4.75)
+err_high <- c(4.64, 4.72, 4.87)
+err_low <- c(4.44, 4.52, 4.63)
+
+cap_len <- data.frame(Population = site, Estimate = est, Error_high = err_high, Error_low = err_low)
+cap_len
+
+```
+
+Plot capsule length across populations
+
+```{r}
+ggplot(embryo_number, aes(x = Population, y = Capsule_Length, color = Population)) +
+  geom_jitter(aes(x = Population, y = Capsule_Length), position=position_jitter(w=0.2), size = 2) +
+  scale_color_manual(values = c("gold2", "cornflowerblue","darkblue")) +
+  geom_point(data = cap_len, aes(x = Population, y = Estimate), size = 4,  color = "red") +
+  geom_errorbar(data = cap_len, aes(x = Population, y = Estimate, ymin = Error_low, ymax = Error_high), color = "red", width = 0.5) +
+  theme_bw() +
+  theme(legend.position = "none",
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size=25), 
+        axis.text = element_text(size=25),
+        axis.ticks.y = element_line(linewidth = 2),
+        axis.ticks.length.y = unit(0.25, "cm")) + 
+  scale_y_continuous(name = "Capsule Length (mm)", expand = c(0,0), limits = c(0,9)) -> cap_len_plot
+
+cap_len_plot$data$Population <- factor(cap_len_plot$data$Population, levels=neworder)
+
+cap_len_plot
+
+```
+
+Calculate pairwise comparisons using emmeans and Tukey adjustments
+
+```{r}
+em <- emmeans(cap_len_gm, "Population", data = embryo_number)
+contrast(em, "pairwise", adjust = "Tukey")
+
+```
+
+Plot model residuals to assess model fit
+
+```{r}
+plot(cap_len_gm)
+plot(resid(cap_len_gm))
+hist(resid(cap_len_gm))
+```
+
+Q-Q plot for model residuals
+
+```{r}
+qqnorm(resid(cap_len_gm))
+qqline(resid(cap_len_gm), col = "steelblue", lwd = 2)
+```
+
+
+### Embryo size 
+
+Import data
+
+```{r}
+embryo_size <- read.csv("/Users/keiramonuki/Documents/Sanford\ Lab/snail_tank_experiment/emb_size_new.csv")
+
+head(embryo_size)
+
+```
+
+Remove data from cold treatment and from RP population (not enough data for either), and from DB_H23
+
+```{r}
+embryo_size %>% 
+  filter(Treatment == "H") %>% 
+  filter(Population != "RP") %>% 
+  filter(Breeding_Pair != "23")-> embryo_size
+
+head(embryo_size)
+
+```
+
+Assess raw data distribution, including mean and standard deviation
+
+```{r}
+hist(embryo_size$Embryo_size)
+mean(embryo_size$Embryo_size)
+sd(embryo_size$Embryo_size)
+```
+
+Run a linear mixed effects model with Capsule ID (i.e. "Capsule_num") nested within Breeding Pair 
+
+```{r}
+emb_size_lm1 <- lmer(Embryo_size ~ Avg_Size + Population + (1 | Breeding_Pair/Capsule_num), data = embryo_size)
+
+summary(emb_size_lm1)
+
+anova(emb_size_lm1) #size not significant:0.83292 
+Anova(emb_size_lm1) #chisq = 7.0694, 0.02917 
+
+AIC(emb_size_lm1) #-7635.207
+AICc(emb_size_lm1) #-7635.132
+```
+
+Calculate pairwise comparisons using emmeans and Tukey adjustments
+
+```{r}
+em <- emmeans(emb_size_lm1, "Population", data = embryo_size)
+contrast(em, "pairwise", adjust = "Tukey")
+```
+
+Isolate model estimates to plot on top of raw data scatter
+
+```{r}
+
+emmeans(emb_size_lm1, "Population", type  = "response", data = embryo_size)
+
+estimates <- emmeans(emb_size_lm1, "Population", type  = "response", data = embryo_size)
+
+plot(estimates)
+
+estimates
+
+```
+
+Create data frame of the model estimates
+
+```{r}
+est <- c(0.289, 0.292, 0.300)
+err_high <- c(0.295, 0.297, 0.306)
+err_low <- c(0.284, 0.286, 0.294)
+
+emb_size <- data.frame(Population = site, Estimate = est, Error_high = err_high, Error_low = err_low)
+emb_size
+```
+
+Plot embryo size across populations 
+
+```{r}
+ggplot(embryo_size, aes(x = Population, y = Embryo_size, color = Population)) +
+  geom_jitter(aes(x = Population, y = Embryo_size), position=position_jitter(w=0.2), size = 2) +
+  scale_color_manual(values = c("gold2", "cornflowerblue","darkblue")) +
+  geom_point(data = emb_size, aes(x = Population, y = Estimate), size = 4,  color = "red") +
+  geom_errorbar(data = emb_size, aes(x = Population, y = Estimate, ymin = Error_low, ymax = Error_high), color = "red", width = 0.5) +
+  theme_bw() +
+  theme(legend.position = "none",
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size=25), 
+        axis.text = element_text(size=25),
+        axis.ticks.y = element_line(linewidth = 2),
+        axis.ticks.length.y = unit(0.25, "cm")) + 
+  scale_y_continuous(name = "Embryo Size (mm)", expand = c(0,0), limits = c(0,0.6)) -> emb_size_plot
+
+
+emb_size_plot$data$Population <- factor(emb_size_plot$data$Population, levels=neworder)
+
+emb_size_plot
+
+```
+
+Plot model residuals to assess model fit 
+
+```{r}
+plot(emb_size_lm1)
+plot(resid(emb_size_lm1))
+hist(resid(emb_size_lm1))
+```
+
+Q-Q plot of model residuals
+
+```{r}
+qqnorm(resid(emb_size_lm1))
+qqline(resid(emb_size_lm1), col = "steelblue", lwd = 2)
+```
+
+### Hatchling number
+
+Import data
+
+```{r}
+hatch_number <- read.csv("/Users/keiramonuki/Documents/Sanford\ Lab/snail_tank_experiment/hatch_num_new.csv")
+
+head(hatch_number)
+
+```
+
+Remove data from cold treatment and from RP population (not enough data for either)
+
+```{r}
+hatch_number %>% 
+  filter(Treatment == "H") %>% 
+  filter(Pop != "RP") %>% 
+  filter(Breeding_pair != "23")-> hatch_number
+
+
+head(hatch_number)
+
+```
+
+Look at raw data distribution including mean and standard deviation
+
+```{r}
+hist(hatch_number$Num_hatch)
+mean(hatch_number$Num_hatch) 
+sd(hatch_number$Num_hatch)
+```
+
+Run a GLMM with a negative binomial distribution and log link function, and calculate AIC values.
+
+```{r}
+hatch_num_nb <- 
+  glm.nb(Num_hatch ~ Avg_Size + Pop + (1 | Breeding_pair), data = hatch_number)
+
+summary(hatch_num_nb)
+
+anova(hatch_num_nb) 
+Anova(hatch_num_nb) 
+
+AIC(hatch_num_nb) 
+AICc(hatch_num_nb)
+```
+
+Back-transform model estimates to plot on top of the raw data scatter
+
+```{r}
+
+emmeans(hatch_num_nb, "Pop", type  = "response", data = hatch_number)
+
+estimates <- emmeans(hatch_num_nb, "Pop", type  = "response", data = hatch_number)
+
+plot(estimates)
+
+estimates
+
+```
+
+Create data frame of the back-transformed model estimates
+
+```{r}
+est <- c(28.0, 29.3, 32.4)
+err_high <- c(32.2, 33.5, 37.1)
+err_low <- c(24.3, 25.6, 28.3)
+
+hatch_num <- data.frame(Pop = site, Estimate = est, Error_high = err_high, Error_low = err_low)
+hatch_num
+```
+
+Plot hatchling number across populations
+
+```{r}
+ggplot(hatch_number, aes(x = Pop, y = Num_hatch, color = Pop)) +
+  geom_jitter(aes(x = Pop, y = Num_hatch), position=position_jitter(w=0.2), size = 2) +
+  scale_color_manual(values = c("gold2", "cornflowerblue","darkblue")) +
+  geom_point(data = hatch_num, aes(x = Pop, y = Estimate), size = 4,  color = "red") +
+  geom_errorbar(data = hatch_num, aes(x = Pop, y = Estimate, ymin = Error_low, ymax = Error_high), color = "red", width = 0.5) +
+  theme_bw() +
+  theme(legend.position = "none",
+        axis.title = element_text(size=25), 
+        axis.text = element_text(size=25),
+        axis.ticks.y = element_line(linewidth = 2),
+        axis.ticks.length.y = unit(0.25, "cm")) + 
+  scale_y_continuous(name = "Number of Hatchlings", expand = c(0,0), limits = c(0,75)) + 
+  xlab("Population") -> hatch_num_plot
+
+hatch_num_plot$data$Pop <- factor(hatch_num_plot$data$Pop, levels=neworder)
+
+hatch_num_plot
+
+```
+
+Plot model residuals to assess model fit
+
+```{r}
+plot(hatch_num_nb)
+plot(resid(hatch_num_nb))
+hist(resid(hatch_num_nb))
+```
+
+Q-Q plot for model residuals
+
+```{r}
+qqnorm(resid(hatch_num_nb))
+qqline(resid(hatch_num_nb), col = "steelblue", lwd = 2)
+```
+
+### Development Time
+
+Import data
+
+```{r}
+dev_time <- read.csv("/Users/keiramonuki/Documents/Sanford\ Lab/snail_tank_experiment/dev_time_new.csv")
+
+head(dev_time)
+
+```
+
+Remove data from cold treatment and from RP population (not enough data for either)
+
+```{r}
+dev_time %>% 
+  filter(Treatment == "H") %>% 
+  filter(Pop != "RP") %>% 
+  filter(ID != "DB_H23")-> dev_time
+
+head(dev_time)
+
+```
+
+Check distribution of the raw data, including mean and standard deviation
+
+```{r}
+hist(dev_time$Time)
+mean(dev_time$Time) 
+sd(dev_time$Time) 
+```
+
+Run a GLMM with a negative binomial distribution and log link function, and calculate AIC values
+
+```{r}
+dev_time_nb <- glm.nb(Time ~ Avg_Size + Pop, data = dev_time)
+
+summary(dev_time_nb)
+
+anova(dev_time_nb) 
+Anova(dev_time_nb) 
+
+AIC(dev_time_nb) 
+AICc(dev_time_nb) 
+```
+
+Plot model residuals to assess model fit
+
+```{r}
+plot(dev_time_nb)
+plot(resid(dev_time_nb))
+hist(resid(dev_time_nb))
+```
+
+Q-Q plot for model residuals 
+
+```{r}
+qqnorm(resid(dev_time_nb))
+qqline(resid(dev_time_nb), col = "steelblue", lwd = 2)
+```
+
+Back-transform model estimates to plot on top of the raw data scatter
+
+```{r}
+
+emmeans(dev_time_nb, "Pop", type  = "response", data = dev_time)
+
+estimates <- emmeans(dev_time_nb, "Pop", type  = "response", data = dev_time)
+
+plot(estimates)
+
+estimates
+
+```
+
+Create data frame of model estimates
+
+```{r}
+
+est <- c(39.4, 44.1, 43.7)
+err_high <- c(43.7, 48.7, 49.0)
+err_low <- c(35.5, 39.9, 39.0)
+
+development_time <- data.frame(Population = site, Estimate = est, Error_high = err_high, Error_low = err_low)
+
+development_time
+
+```
+
+Plot development time across populations
+
+```{r}
+ggplot(dev_time, aes(x = Pop, y = Time, color = Pop)) +
+  geom_jitter(aes(x = Pop, y = Time), position=position_jitter(w=0.2), size = 2) +
+  scale_color_manual(values = c("gold2", "cornflowerblue","darkblue")) +
+  geom_point(data = development_time, aes(x = Population, y = Estimate), size = 4,  color = "red") +
+  geom_errorbar(data = development_time, aes(x = Population, y = Estimate, ymin = Error_low, ymax = Error_high), color = "red", width = 0.5) +
+  theme_bw() +
+  theme(legend.position = "none",
+        axis.title = element_text(size=25), 
+        axis.text = element_text(size=25),
+        axis.ticks.y = element_line(linewidth = 2),
+        axis.ticks.length.y = unit(0.25, "cm")) + 
+  scale_y_continuous(name = "Development Time (days)", expand = c(0, 0), limits = c(0, 90)) + 
+  xlab("Population") -> dev_time_plot
+
+dev_time_plot$data$Pop <- factor(dev_time_plot$data$Pop, levels=neworder)
+
+dev_time_plot
+
+```
+
+
+### Fecundity
+
+Import data
+
+```{r}
+fecundity <- read.csv("/Users/keiramonuki/Documents/Sanford\ Lab/snail_tank_experiment/fecundity_updated_new.csv")
+
+head(fecundity)
+
+```
+
+Remove data from cold treatment and from RP population (not enough data for either)
+
+```{r}
+fecundity %>% 
+  filter(Treatment == "H") %>% 
+  filter(Pop != "RP") %>% 
+  filter(ID != "DB_H23")-> fecundity
+
+head(fecundity)
+
+```
+
+Check raw data distribution, including mean and standard deviation
+
+```{r}
+hist(fecundity$Fecundity)
+mean(fecundity$Fecundity) 
+sd(fecundity$Fecundity) 
+```
+
+Run a GLMM with a Gamma distribution and log link function, and calculate AIC values
+
+```{r}
+fecundity_gm <- glm(Fecundity ~ Avg_Size + Pop, family = Gamma(link = log), data = fecundity)
+
+summary(fecundity_gm)
+
+anova(fecundity_gm) 
+Anova(fecundity_gm) 
+
+AIC(fecundity_gm) 
+AICc(fecundity_gm) 
+```
+
+Back-transform model estimates to plot on top of the raw data scatter
+
+```{r}
+
+emmeans(fecundity_gm, "Pop", type  = "response", data = fecundity)
+
+estimates <- emmeans(fecundity_gm, "Pop", type  = "response", data = fecundity)
+
+plot(estimates)
+
+estimates
+
+```
+
+Create data frame of the model estimates
+
+```{r}
+
+est <- c(3378, 3666, 5695)
+err_high <- c(4615, 4969, 7690)
+err_low <- c(2473, 2705, 4218)
+
+fecund <- data.frame(Population = site, Estimate = est, Error_high = err_high, Error_low = err_low)
+
+fecund
+
+```
+
+Plot fecundity across populations
+
+```{r}
+ggplot(fecundity, aes(x = Pop, y = Fecundity, color = Pop)) +
+  geom_jitter(aes(x = Pop, y = Fecundity), position=position_jitter(w=0.2), size = 2) +
+  scale_color_manual(values = c("gold2", "cornflowerblue","darkblue")) +
+  geom_point(data = fecund, aes(x = Population, y = Estimate), size = 4,  color = "red") +
+  geom_errorbar(data = fecund, aes(x = Population, y = Estimate, ymin = Error_low, ymax = Error_high), color = "red", width = 0.5) +
+  theme_bw() +
+  theme(legend.position = "none",
+        axis.title = element_text(size=25), 
+        axis.text = element_text(size=25),
+        axis.ticks.y = element_line(linewidth = 2),
+        axis.ticks.length.y = unit(0.25, "cm")) + 
+  scale_y_continuous(name = "Fecundity", expand = c(0,0), limits = c(0,11000)) + 
+  xlab("Population") -> fecund_plot
+
+fecund_plot$data$Pop <- factor(fecund_plot$data$Pop, levels=neworder)
+
+fecund_plot
+
+```
+
+Pairiwse comparisons using the emmeans package and Tukey adjustments
+
+```{r}
+em <- emmeans(fecundity_gm, "Pop", data = fecundity)
+contrast(em, "pairwise", adjust = "Tukey")
+
+```
+
+### Hatchling Size 
+
+Import data 
+
+```{r}
+hatchling_size <- read.csv("/Users/keiramonuki/Documents/Sanford\ Lab/snail_tank_experiment/hatchling_size_new.csv")
+
+head(hatchling_size)
+```
+
+Remove data from cold treatment and from RP population (not enough data for either)
+
+```{r}
+hatchling_size %>% 
+  filter(Treatment == "H") %>% 
+  filter(Pop != "RP") %>% 
+  filter (Breeding_pair != "23")-> hatchling_size
+
+head(hatchling_size)
+```
+
+Check raw data distribution, including mean and standard deviation
+
+```{r}
+hist(hatchling_size$Hatch_size)
+mean(hatchling_size$Hatch_size) 
+sd(hatchling_size$Hatch_size) 
+```
+
+Run a GLMM with a Gamma distribution and log link function, and calculate AIC values
+
+```{r}
+hatch_size_gm <- 
+  glm(Hatch_size ~ Avg_Size + Pop + (1 | Breeding_pair/Capsule_ID), family = Gamma(link = "log"), data = hatchling_size)
+
+summary(hatch_size_gm)
+anova(hatch_size_gm) 
+Anova(hatch_size_gm)
+
+AIC(hatch_size_gm) 
+AICc(hatch_size_gm)
+```
+
+Back-transform model estimates to plot on top of the raw data scatter
+
+```{r}
+
+emmeans(hatch_size_gm, "Pop", type  = "response", data = hatchling_size)
+
+estimates <- emmeans(hatch_size_gm, "Pop", type  = "response", data = hatchling_size)
+
+plot(estimates)
+
+estimates
+
+```
+
+Create data frame of model estimates
+
+```{r}
+est <- c(0.704, 0.670, 0.672)
+err_high <- c(0.717, 0.681, 0.684)
+err_low <- c(0.692, 0.658, 0.661)
+
+hatch_size <- data.frame(Pop = site, Estimate = est, Error_high = err_high, Error_low = err_low)
+hatch_size
+```
+
+Plot hatchling size across populations
+
+```{r}
+ggplot(hatchling_size, aes(x = Pop, y = Hatch_size, color = Pop)) +
+  geom_jitter(aes(x = Pop, y = Hatch_size), position=position_jitter(w=0.2), size = 2) +
+  scale_color_manual(values = c("gold2", "cornflowerblue","darkblue")) +
+  geom_point(data = hatch_size, aes(x = Pop, y = Estimate), size = 4,  color = "red") +
+  geom_errorbar(data = hatch_size, aes(x = Pop, y = Estimate, ymin = Error_low, ymax = Error_high), color = "red", width = 0.5) +
+  theme_bw() +
+  theme(legend.position = "none",
+        axis.title = element_text(size=25), 
+        axis.text = element_text(size=25),
+        axis.ticks.y = element_line(linewidth = 2),
+        axis.ticks.length.y = unit(0.25, "cm")) + 
+  scale_y_continuous(name = "Hatchling Size (mm)", expand = c(0,0), limits = c(0,1.3)) + 
+  xlab("Population") -> hatch_size_plot
+
+
+hatch_size_plot$data$Pop <- factor(hatch_size_plot$data$Pop, levels=neworder)
+
+hatch_size_plot
+
+```
+
+Calculate pairwise comparisons using the emmeans package and Tukey adjustments
+
+```{r}
+em <- emmeans(hatch_size_gm, "Pop", data = hatchling_size)
+contrast(em, "pairwise", adjust = "Tukey")
+```
+
+Plot model resiuals to assess model fit 
+
+```{r}
+plot(hatch_size_gm)
+plot(resid(hatch_size_gm))
+hist(resid(hatch_size_gm))
+```
+
+Q-Q plot for model residuals
+
+```{r}
+qqnorm(resid(hatch_size_gm))
+qqline(resid(hatch_size_gm), col = "steelblue", lwd = 2)
+```
+
+### Nurse Eggs 
+
+Import data
+
+```{r}
+nurse_eggs <- read.csv("/Users/keiramonuki/Documents/Sanford\ Lab/snail_tank_experiment/nurse_eggs.csv")
+
+head(nurse_eggs)
+
+```
+
+Remove RP population and one outlier snail (DB_H23)
+
+```{r}
+nurse_eggs %>% 
+  filter(Population != "RP") %>% 
+  filter(Breeding_Pair != "DB_H23") -> nurse_eggs
+```
+
+Run linear model of nurse egg ratio across populations, and calculate AIC values
+
+```{r}
+nurse_lm <- lm(Ratio ~ Population, data = nurse_eggs)
+
+summary(nurse_lm)
+Anova(nurse_lm) 
+
+AIC(nurse_lm)
+AICc(nurse_lm)
+
+```
+
+Plot model residuals to assess model fit 
+
+```{r}
+plot(nurse_lm)
+plot(resid(nurse_lm))
+hist(resid(nurse_lm))
+```
+
+Q-Q plot of model residuals
+
+```{r}
+qqnorm(resid(nurse_lm))
+qqline(resid(nurse_lm), col = "steelblue", lwd = 2)
+```
+
+Isolate model estimates to plot on top of the raw data scatter
+
+```{r}
+
+emmeans(nurse_lm, "Population", type  = "response", data = nurse_eggs)
+
+estimates <- emmeans(nurse_lm, "Population", type  = "response", data = nurse_eggs)
+
+plot(estimates)
+
+estimates
+
+```
+
+Create data frame of model estimates
+
+```{r}
+est <- c(17.6, 14.3, 12.2)
+err_high <- c(22.2, 19.0, 16.5)
+err_low <- c(12.87, 9.59, 7.95)
+
+nurse_summary <- data.frame(Population = site, Estimate = est, Error_high = err_high, Error_low = err_low)
+nurse_summary
+```
+
+Plot nurse egg ratios across populations
+
+```{r}
+ggplot(nurse_eggs, aes(x = Population, y = Ratio, color = Population)) +
+  geom_jitter(aes(x = Population, y = Ratio), position=position_jitter(w=0.2), size = 2) +
+  scale_color_manual(values = c("darkgoldenrod2", "cornflowerblue","darkblue")) +
+  geom_point(data = nurse_summary, aes(x = Population, y = Estimate), size = 4,  color = "red") +
+  geom_errorbar(data = nurse_summary, aes(x = Population, y = Estimate, ymin = Error_low, ymax = Error_high), color = "red", width = 0.5) +
+  theme_bw() +
+  theme(legend.position = "none",
+        axis.title = element_text(size=25), 
+        axis.text = element_text(size=25),
+        axis.ticks.y = element_line(linewidth = 2),
+        axis.ticks.length.y = unit(0.25, "cm")) + 
+  scale_y_continuous(name = "Nurse Egg Ratio", expand = c(0,0), limits = c(-10,45)) + 
+  xlab("Population") -> nurse_plot
+
+nurse_plot$data$Population <- factor(nurse_plot$data$Population, levels=neworder)
+
+nurse_plot
+
+```
+
+### Growth Rate 
+
+Adult snail growth rate in laboratory experiment
+
+Import data
+
+```{r}
+growth <- read.csv("/Users/keiramonuki/Documents/Sanford\ Lab/snail_tank_experiment/growth.csv")
+
+head(growth)
+
+```
+
+Remove NAs
+
+```{r}
+growth <- na.omit(growth)
+```
+
+Remove negative growth rates
+
+```{r}
+growth %>% 
+  filter(Growth > 0) -> growth
+
+```
+
+Calculate summary statistics (mean, standard deviation, standard error), and save as a data frame
+
+```{r}
+growth %>% 
+  group_by(Population, Treatment) %>% 
+  summarise(mean = mean(Growth), 
+            sd = sd(Growth),
+            se = sd(Growth)/sqrt(length(Growth))) -> growth_summary
+
+
+```
+
+Plot by growth rates by population and treatment
+
+```{r}
+ggplot(growth_summary, aes(x = Population, y = mean, fill = Treatment)) + 
+  geom_bar(stat = "identity", position = position_dodge()) + 
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), width=.2,
+                 position=position_dodge(.9)) + 
+  scale_fill_manual(values=c('lightblue', 'brown1')) +
+  theme_bw() +
+  theme(legend.position = "right", panel.grid.minor.y=element_blank(), panel.grid.minor.x=element_blank(),
+        legend.title = element_text(size=25),
+        legend.text = element_text(size=20),
+        panel.grid.major.y=element_blank(),
+        panel.grid.major.x=element_blank(), 
+        axis.text.x = element_text(angle = 90, hjust = 1), axis.title = element_text(size=35), 
+        plot.title = element_text(size=20, face = "italic"),
+        axis.text = element_text(size=25),
+        axis.ticks.y = element_line(linewidth = 2)) +
+  scale_y_continuous(name = "Growth Rate(mm/day)") + 
+  xlab("Population") -> growth_plot
+
+
+neworder = c("YB", "RP", "MB", "DB")
+
+growth_plot$data$Population <- factor(growth_plot$data$Population, levels=neworder)
+
+growth_plot
+
+
+```
+
+Run a linear model with a interaction between Population * Treatment * Sex and calculate AIC values
+
+```{r}
+growth$Population <- as.factor(growth$Population)
+
+growth_lm2 <- lm(Growth ~ Population*Treatment*Sex, data = growth)
+
+summary(growth_lm2)
+anova(growth_lm2)
+Anova(growth_lm2) 
+
+AIC(growth_lm2)
+AICc(growth_lm2) 
+
+```
+
+Plot model residuals to asess model fit
+
+```{r}
+plot(growth_lm2)
+plot(resid(growth_lm2))
+hist(resid(growth_lm2))
+```
+
+Q-Q plot of model residuals
+
+```{r}
+qqnorm(resid(growth_lm2))
+qqline(resid(growth_lm2), col = "steelblue", lwd = 2)
+```
+
+Calculate pairwise comparison using Tukey adjustments
+
+```{r}
+
+tukey_growth <- glht(growth_lm2, linfct = mcp(Population = "Tukey"))
+
+cld(tukey_growth)
+```
