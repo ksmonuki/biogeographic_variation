@@ -1,5 +1,5 @@
 # biogeographic_variation readme document
-Anonymous code for the manuscript submission "Biogeographic variation in reproductive strategy in a range-expanding marine gastropod" to the <i>Proceedings of the Royal Society B: Biological Sciences</i>
+Anonymous code for the manuscript submission "Biogeographic variation in reproductive strategy in a range-expanding marine gastropod" to <i>Functional Ecology</i>
 
 # Repository includes:
 - R markdown file (.Rmd) of the code used for analyses and data visualization
