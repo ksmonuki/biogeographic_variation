@@ -1,7 +1,7 @@
 ---
-title: "Manuscript submission code"
-author: "Anonymous"
-date: '2025-27-09'
+title: "R Code for analyses of reproductive trait data for Acanthinucella spirata"
+author: "Keira Monuki"
+date: '2026-6-11'
 output: html_document
 ---
 
@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-Code for the manuscript submission "Biogeographic variation in reproductive strategy in a range-expanding marine gastropod" to the Proceedings of the Royal Society B: Biological Sciences. 
+Code for the manuscript "Biogeographic variation in reproductive strategy in a range-expanding marine gastropod" in Ecosphere. 
 
 ## Field Capsule Data Analysis 
 
@@ -1648,7 +1648,7 @@ ggplot(growth_summary, aes(x = Population, y = mean, fill = Treatment)) +
   geom_bar(stat = "identity", position = position_dodge()) + 
   geom_errorbar(aes(ymin=mean-se, ymax=mean+se), width=.2,
                  position=position_dodge(.9)) + 
-  scale_fill_manual(values=c('lightblue', 'brown1')) +
+  scale_fill_manual(values=c('lightblue', 'brown1'), labels = c("cool", "warm",)) +
   theme_bw() +
   theme(legend.position = "right", panel.grid.minor.y=element_blank(), panel.grid.minor.x=element_blank(),
         legend.title = element_text(size=25),
