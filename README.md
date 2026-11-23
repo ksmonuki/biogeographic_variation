@@ -1,9 +1,9 @@
-# biogeographic_variation readme document
-Anonymous code for the manuscript submission "Biogeographic variation in reproductive strategy in a range-expanding marine gastropod."
+# ReadMe
+Code for the manuscript "Biogeographic variation in reproductive strategy in a range-expanding marine gastropod" in <i>Ecosphere</i>.
 
 # Repository includes:
-- R markdown file (.Rmd) of the code used for analyses and data visualization
-- R markdown html document of the code and resulting output (biogeographic_variation_code.html)
+- R markdown file (.Rmd) of the code used for analyses and data visualization (biogeographic_variation.Rmd)
+- R markdown html document of the code and resulting output (biogeographic_variation.html)
 - all necessary csv files to run the code in R
 
 # The csv files are listed below: 
