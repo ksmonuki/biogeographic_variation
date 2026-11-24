@@ -28,7 +28,7 @@ Below is the metadata for the csv files. Each csv contains rows for each unique 
 
 ### field_nurse_eggs.csv: <i>nurse egg ratios for field-collected capsules</i>
   * Column names
-    - Population (see above description); Aggregation_ID (number identifying the aggregation capsules were collected from); Average_hatchling_number (average number of hatchlings per capsule for that aggregation); Average_embryo_number (average number of embryos per capsule for that aggregation); Nurse_egg (average embryo number - average hatchling number)
+    - Population (see above description); Aggregation_ID (number identifying the aggregation capsules were collected from); Average_hatchling_number (average number of hatchlings per capsule for that aggregation); Average_embryo_number (average number of embryos per capsule for that aggregation); Nurse_egg (average embryo number - average hatchling number/average hatchling number)
 
 ### tank_adult_growth.csv: <i>adult growth rates (mm/day) of snails in laboratory experiment</i>
   * Column names
@@ -60,4 +60,4 @@ Below is the metadata for the csv files. Each csv contains rows for each unique 
       
 ### tank_nurse_eggs.csv: <i>nurse egg ratios for laboratory-reared capsules </i>
   * Column names
-    - Breeding_Pair (Unique ID for each breeding pair); Population (see above description); Number_hatch (average number of hatchlings hatched per breeding pair); Embryo_number (average number of embryos per capsule per breeding pair); Ratio (average number of embryos - average number of hatchlings)
+    - Breeding_Pair (Unique ID for each breeding pair); Population (see above description); Number_hatch (average number of hatchlings hatched per breeding pair); Embryo_number (average number of embryos per capsule per breeding pair); Ratio (average number of embryos - average number of hatchlings/average hatchling number)
